@@ -12,6 +12,7 @@
       --accent: #ef233c;
       --target: #8d99ae;
       --guess: #ffb703;
+      --grid-size: clamp(220px, 58vmin, 460px);
     }
     body {
       font-family: system-ui, -apple-system, sans-serif;
@@ -24,7 +25,7 @@
       margin: 0;
     }
     .container {
-      max-width: 600px;
+      max-width: 780px;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -32,10 +33,12 @@
     }
     .grid-wrapper {
       display: grid;
-      grid-template-columns: 100px 1fr 100px;
-      grid-template-rows: 40px 1fr 40px;
+      grid-template-columns: minmax(64px, 120px) auto minmax(64px, 120px);
+      grid-template-rows: auto auto auto;
+      gap: 8px;
       align-items: center;
       justify-items: center;
+      justify-content: center;
       background: var(--card);
       padding: 15px;
       border-radius: 12px;
@@ -44,7 +47,8 @@
     .label {
       font-weight: bold;
       text-align: center;
-      font-size: 0.9rem;
+      font-size: clamp(0.8rem, 1.6vmin, 1.15rem);
+      overflow-wrap: anywhere;
     }
     .label-top { grid-column: 2; grid-row: 1; }
     .label-bottom { grid-column: 2; grid-row: 3; }
@@ -53,8 +57,8 @@
     #grid {
       grid-column: 2;
       grid-row: 2;
-      width: 300px;
-      height: 300px;
+      width: var(--grid-size);
+      height: var(--grid-size);
       background: #3d405b;
       border: 2px solid var(--text);
       position: relative;
@@ -137,6 +141,7 @@
       display: flex;
       gap: 10px;
       justify-content: center;
+      flex-wrap: wrap;
     }
     button {
       background: var(--card);
@@ -148,7 +153,7 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background: var(--text);
       color: var(--bg);
     }
@@ -162,6 +167,18 @@
       padding: 15px;
       border-radius: 8px;
     }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .history-header h3 { margin: 0; }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -171,6 +188,12 @@
       border-bottom: 1px solid #444;
       padding: 6px;
       text-align: left;
+    }
+    #storage-note {
+      font-size: 0.8rem;
+      color: var(--target);
+      text-align: center;
+      display: none;
     }
   </style>
 </head>
@@ -193,11 +216,16 @@
   </div>
   <div class="controls">
     <button id="btn-next" onclick="nextRound()">Neue Runde</button>
+    <button id="btn-redraw" onclick="redrawScales()" disabled>Skalen neu ziehen</button>
     <button id="btn-reveal" onclick="toggleTargetView()" disabled>Ziel anzeigen (Hinweisgeber)</button>
     <button id="btn-submit" onclick="submitGuess()" disabled>Tipp einloggen</button>
   </div>
+  <div id="storage-note">Speichern nicht möglich – die Historie geht beim Neuladen verloren.</div>
   <div class="history">
-    <h3>Runden-Historie</h3>
+    <div class="history-header">
+      <h3>Runden-Historie</h3>
+      <button class="btn-small" onclick="clearHistory()">Verlauf löschen</button>
+    </div>
     <table>
       <thead>
         <tr>
@@ -222,12 +250,17 @@
   ];
   const scalesList = (typeof SCALES_DATA !== 'undefined') ? SCALES_DATA : defaultScales;
 
+  // Punkte-Zonen: max = Radius in % der Feldbreite. Von innen nach außen sortiert lassen!
   const SCORE_BANDS = [
-    { max: 7,  points: 4, fill: 'rgba(46,204,113,0.22)', stroke: '#2ecc71' },
+    { max: 6,  points: 4, fill: 'rgba(46,204,113,0.22)', stroke: '#2ecc71' },
     { max: 14, points: 3, fill: 'rgba(241,196,15,0.15)', stroke: '#f1c40f' },
-    { max: 21, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
+    { max: 20, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
     { max: 28, points: 1, fill: 'rgba(141,153,174,0.08)', stroke: '#8d99ae' }
   ];
+
+  // So viele zuletzt gespielte Skalen bleiben gesperrt (2 pro Runde).
+  const RECENT_MEMORY = 5;
+  const STORAGE_KEY = 'longlongwave.2d.v1';
 
   let state = {
     target: { x: 0, y: 0 },
@@ -235,32 +268,113 @@
     phase: 'IDLE',
     roundCount: 0,
     axisX: [],
-    axisY: []
+    axisY: [],
+    recentPairs: [],
+    history: []
   };
+
   const grid = document.getElementById('grid');
   const ringLayer = document.getElementById('ring-layer');
   const targetMarker = document.getElementById('target-marker');
   const guessMarker = document.getElementById('guess-marker');
   const statusText = document.getElementById('status-text');
   const hintInput = document.getElementById('hint-input');
-  function getRandomScalePair() {
-    const pair = scalesList[Math.floor(Math.random() * scalesList.length)];
+  const btnRedraw = document.getElementById('btn-redraw');
+  const btnReveal = document.getElementById('btn-reveal');
+  const btnSubmit = document.getElementById('btn-submit');
+
+  /* ---------- Speicherung ---------- */
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        roundCount: state.roundCount,
+        recentPairs: state.recentPairs,
+        history: state.history
+      }));
+    } catch (e) {
+      document.getElementById('storage-note').style.display = 'block';
+    }
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      state.roundCount = saved.roundCount || 0;
+      state.recentPairs = Array.isArray(saved.recentPairs) ? saved.recentPairs : [];
+      state.history = Array.isArray(saved.history) ? saved.history : [];
+      renderHistory();
+      if (state.roundCount > 0) {
+        statusText.innerText = state.roundCount + " Runden gespielt. Weiter mit 'Neue Runde'.";
+      }
+    } catch (e) {
+      document.getElementById('storage-note').style.display = 'block';
+    }
+  }
+
+  function clearHistory() {
+    if (state.history.length && !confirm('Historie und Rundenzähler wirklich zurücksetzen?')) return;
+    state.roundCount = 0;
+    state.recentPairs = [];
+    state.history = [];
+    renderHistory();
+    saveState();
+    statusText.innerText = 'Verlauf gelöscht. Starte eine neue Runde.';
+  }
+
+  /* ---------- Skalen ziehen ---------- */
+
+  function pairKey(pair) {
+    return [...pair].sort().join('|');
+  }
+  function orient(pair) {
     return Math.random() < 0.5 ? [pair[0], pair[1]] : [pair[1], pair[0]];
   }
+  function sharesWord(a, b) {
+    return a.some(word => b.includes(word));
+  }
+  function pickPairs(blockedKeys) {
+    const blocked = new Set(blockedKeys);
+    let pool = scalesList.filter(p => !blocked.has(pairKey(p)));
+    if (pool.length < 2) pool = scalesList.slice(); // Notbremse bei sehr kurzer scales.js
+    const first = pool[Math.floor(Math.random() * pool.length)];
+    let rest = pool.filter(p => pairKey(p) !== pairKey(first) && !sharesWord(p, first));
+    if (!rest.length) rest = pool.filter(p => pairKey(p) !== pairKey(first));
+    const second = rest[Math.floor(Math.random() * rest.length)];
+    return [orient(first), orient(second)];
+  }
+  function applyPairs(pairX, pairY) {
+    state.axisX = pairX;
+    state.axisY = pairY;
+    document.getElementById('label-left').innerText = pairX[0];
+    document.getElementById('label-right').innerText = pairX[1];
+    document.getElementById('label-top').innerText = pairY[0];
+    document.getElementById('label-bottom').innerText = pairY[1];
+  }
+  function redrawScales() {
+    if (state.phase !== 'SETUP') return;
+    // Die gerade verworfenen Skalen zusätzlich sperren, sonst kommen sie sofort wieder.
+    const blocked = [...state.recentPairs, pairKey(state.axisX), pairKey(state.axisY)];
+    const [pairX, pairY] = pickPairs(blocked);
+    applyPairs(pairX, pairY);
+    statusText.innerText = "Neue Skalen. Hinweisgeber klickt auf 'Ziel anzeigen'.";
+  }
+
+  /* ---------- Rundenablauf ---------- */
+
   function nextRound() {
-    state.roundCount++;
-    
-    let pair1 = getRandomScalePair();
-    let pair2 = getRandomScalePair();
-    while (pair1[0] === pair2[0] || pair1[0] === pair2[1]) {
-      pair2 = getRandomScalePair();
+    // Skalen der abgeschlossenen Runde in die Sperrliste schieben.
+    if (state.axisX.length && state.axisY.length) {
+      state.recentPairs.push(pairKey(state.axisX), pairKey(state.axisY));
+      state.recentPairs = state.recentPairs.slice(-RECENT_MEMORY);
     }
-    state.axisX = pair1;
-    state.axisY = pair2;
-    document.getElementById('label-left').innerText = state.axisX[0];
-    document.getElementById('label-right').innerText = state.axisX[1];
-    document.getElementById('label-top').innerText = state.axisY[0];
-    document.getElementById('label-bottom').innerText = state.axisY[1];
+    state.roundCount++;
+
+    const [pairX, pairY] = pickPairs(state.recentPairs);
+    applyPairs(pairX, pairY);
+
     state.target = {
       x: Math.floor(Math.random() * 80) + 10,
       y: Math.floor(Math.random() * 80) + 10
@@ -273,31 +387,36 @@
     targetMarker.style.display = 'none';
     guessMarker.style.display = 'none';
     ringLayer.innerHTML = '';
-    
+
     targetMarker.style.left = state.target.x + '%';
     targetMarker.style.top = state.target.y + '%';
     statusText.innerText = "Runde " + state.roundCount + ": Hinweisgeber klickt auf 'Ziel anzeigen'.";
-    
-    document.getElementById('btn-reveal').disabled = false;
-    document.getElementById('btn-reveal').innerText = "Ziel anzeigen (Hinweisgeber)";
-    document.getElementById('btn-submit').disabled = true;
+
+    btnRedraw.disabled = false;
+    btnReveal.disabled = false;
+    btnReveal.innerText = "Ziel anzeigen (Hinweisgeber)";
+    btnSubmit.disabled = true;
+    saveState();
   }
+
   function toggleTargetView() {
     if (state.phase === 'SETUP') {
       targetMarker.style.display = 'block';
       statusText.innerText = "Ziel sichtbar! Einprägen, Hinweis geben & verdecken.";
-      document.getElementById('btn-reveal').innerText = "Ziel verdecken & weiter";
+      btnReveal.innerText = "Ziel verdecken & weiter";
+      btnRedraw.disabled = true;
       state.phase = 'HINT_GIVEN';
     } else if (state.phase === 'HINT_GIVEN') {
       targetMarker.style.display = 'none';
       statusText.innerText = "Klicke ins Feld, um einen Tipp zu setzen.";
-      document.getElementById('btn-reveal').innerText = "Ziel anzeigen (Hinweisgeber)";
-      document.getElementById('btn-reveal').disabled = true;
+      btnReveal.innerText = "Ziel anzeigen (Hinweisgeber)";
+      btnReveal.disabled = true;
       hintInput.disabled = true;
       if (!hintInput.value.trim()) hintInput.placeholder = 'Hinweis wurde mündlich gegeben';
       state.phase = 'GUESSING';
     }
   }
+
   grid.addEventListener('click', (e) => {
     if (state.phase !== 'GUESSING') return;
     const rect = grid.getBoundingClientRect();
@@ -307,10 +426,12 @@
     guessMarker.style.left = state.guess.x + '%';
     guessMarker.style.top = state.guess.y + '%';
     guessMarker.style.display = 'block';
-    document.getElementById('btn-submit').disabled = false;
+    btnSubmit.disabled = false;
   });
+
   function drawScoreRings(center) {
     ringLayer.innerHTML = '';
+    // Von groß nach klein anlegen, damit die inneren Ringe oben liegen.
     [...SCORE_BANDS].sort((a, b) => b.max - a.max).forEach(band => {
       const ring = document.createElement('div');
       ring.className = 'ring';
@@ -323,6 +444,7 @@
       ringLayer.appendChild(ring);
     });
   }
+
   function submitGuess() {
     if (!state.guess) return;
     state.phase = 'REVEALED';
@@ -334,29 +456,51 @@
     const band = SCORE_BANDS.find(b => distance <= b.max);
     const points = band ? band.points : 0;
 
-    drawScoreRings(state.guess);
+    drawScoreRings(state.guess); // state.target einsetzen, falls die Ringe ums Ziel liegen sollen
 
     statusText.innerText = `Ergebnis: ${points} Punkte! (Abweichung: ${Math.round(distance)})`;
-    document.getElementById('btn-submit').disabled = true;
-    document.getElementById('btn-reveal').disabled = true;
+    btnSubmit.disabled = true;
+    btnReveal.disabled = true;
+    btnRedraw.disabled = true;
     addHistoryEntry(points, hintInput.value.trim());
   }
+
+  /* ---------- Historie ---------- */
+
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
   function addHistoryEntry(points, hintText) {
-    const tbody = document.getElementById('history-body');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${state.roundCount}</td>
-      <td>${state.axisX[0]} ↔ ${state.axisX[1]}</td>
-      <td>${state.axisY[0]} ↔ ${state.axisY[1]}</td>
-      <td>${escapeHtml(hintText) || '<em>-</em>'}</td>
-      <td><strong>${points}</strong></td>
-    `;
-    tbody.insertBefore(tr, tbody.firstChild);
+    state.history.push({
+      round: state.roundCount,
+      axisX: state.axisX,
+      axisY: state.axisY,
+      hint: hintText,
+      points: points
+    });
+    renderHistory();
+    saveState();
   }
+
+  function renderHistory() {
+    const tbody = document.getElementById('history-body');
+    tbody.innerHTML = '';
+    [...state.history].reverse().forEach(entry => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${entry.round}</td>
+        <td>${escapeHtml(entry.axisX[0])} ↔ ${escapeHtml(entry.axisX[1])}</td>
+        <td>${escapeHtml(entry.axisY[0])} ↔ ${escapeHtml(entry.axisY[1])}</td>
+        <td>${escapeHtml(entry.hint) || '<em>-</em>'}</td>
+        <td><strong>${entry.points}</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  loadState();
 </script>
 </body>
 </html>
