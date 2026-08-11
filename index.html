@@ -358,15 +358,92 @@
   </div>
 </div>
 
-<script src="scales.js"></script>
 <script>
-  const defaultScales = [
-    ["Heiß", "Kalt"],
+  const SCALES_DATA = [
+    // --- KLASSISCHE GEGENSÄTZE ---
+    ["Kalt", "Heiß"],
     ["Langweilig", "Spannend"],
     ["Gefährlich", "Harmlos"],
-    ["Rund", "Eckig"]
+    ["Unterbewertet", "Überbewertet"],
+    ["Leise", "Laut"],
+    ["Rund", "Eckig"],
+    ["Altmodisch", "Futuristisch"],
+    ["Sanft", "Aggressiv"],
+    ["Süß", "Herzhaft"],
+    ["Nützlich", "Nutzlos"],
+    ["Günstig", "Unbezahlbar"],
+    ["Einfach", "Kompliziert"],
+    ["Hässlich", "Schön"],
+    ["Dunkel", "Hell"],
+    ["Lokal", "Global"],
+    ["Traditionell", "Modern"],
+    ["Flexibel", "Starr"],
+    ["Vorhersehbar", "Überraschend"],
+    // --- POPKULTUR, MEDIEN & ENTERTAINMENT ---
+    ["Guilty Pleasure", "Echter Klassiker"],
+    ["Meisterwerk", "Absoluter Müll"],
+    ["Überschätzter Film", "Unterschätzter Film"],
+    ["Nerviger Ohrwurm", "Guter Song"],
+    ["Für Kinder gedacht", "Nur für Erwachsene"],
+    ["Mainstream", "Nische / Indie"],
+    ["Gut gealtert", "Schlecht gealtert"],
+    ["Spannender Plot", "Absurde Handlung"],
+    ["Held", "Bösewicht"],
+    ["Hype war gerechtfertigt", "Hype war unbegründet"],
+    ["Kult-Klassiker", "Vergessener Trend"],
+    // --- ALLTAG, VERHALTEN & SOZIALES ---
+    ["Peinlich", "Cool"],
+    ["Introvertiert", "Extrovertiert"],
+    ["Guter Rat", "Schlechter Rat"],
+    ["Gute Ausrede", "Schlechte Ausrede"],
+    ["Traumjob", "Albtraumjob"],
+    ["Sicherer Ort", "Unheimlicher Ort"],
+    ["Sehr anstrengend", "Entspannend"],
+    ["Gute Angewohnheit", "Schlechte Angewohnheit"],
+    ["Typisch Deutsch", "International"],
+    ["Sozial akzeptabel", "Gesellschaftlich Tabu"],
+    ["Zeitverschwendung", "Gut investierte Zeit"],
+    ["Romantisch", "Kitschig"],
+    ["Höflich", "Aufdringlich"],
+    // --- ESSEN, TRINKEN & GESCHMACK ---
+    ["Ekelhaft", "Köstlich"],
+    ["Kateressen", "Gourmet-Gericht"],
+    ["Gesund", "Ungesund"],
+    ["Extrem scharf", "Völlig mild"],
+    ["Kindheitserinnerung", "Erwachsenen-Geschmack"],
+    ["Riecht gut", "Riecht streng"],
+    ["Gefährlich heiß", "Eiskalt"],
+    ["Perfekter Snack", "Vollwertiges Mahl"],
+    // --- MORAL, ETHIK & PHILOSOPHIE ---
+    ["Ethisch vertretbar", "Moralisch fragwürdig"],
+    ["Verzeihbar", "Unverzeihlich"],
+    ["Gute Tat", "Eigennützig"],
+    ["Überlebenswichtig", "Unnötiger Luxus"],
+    ["Gerechtfertigt", "Unfair"],
+    ["Besser früher", "Besser später"],
+    // --- SCI-FI, HYPOTHESEN & FANTASY ---
+    ["Tolle Superkraft", "Nutzlose Superkraft"],
+    ["Rettet dich in einer Apokalypse", "Bringt dich sofort um"],
+    ["Überlebbar", "Tödlich"],
+    ["Sieht vertrauenswürdig aus", "Sieht nach Falle aus"],
+    ["Wäre gerne als Haustier", "Bloß nicht als Haustier"],
+    ["Könnte real sein", "Völliger Schwachsinn"],
+    ["Sci-Fi Utopie", "Dystopie"],
+    // --- ABSURD, LUSTIG & SPEZIELL ---
+    ["Dinge, die man im Dunkeln hört", "Beruhigendes Geräusch"],
+    ["Muss man den Eltern erklären", "Selbsterklärend"],
+    ["Verschwörungstheorie", "Bewiesener Fakt"],
+    ["Sollte illegal sein", "Sollte Pflicht sein"],
+    ["Sieht sympathisch aus", "Sieht aus wie ein Serienmörder"],
+    ["Riecht nach Erfolg", "Riecht nach Verzweiflung"],
+    ["Würde ich für 100€ tun", "Nicht mal für 1.000.000€"],
+    ["Klingt wie eine Beleidigung", "Klingt wie ein Kompliment"],
+    ["Passt perfekt in eine WG", "Kündigungsgrund in einer WG"],
+    // --- Questionable ---
+    ["Barack Obama", "Osama bin Laden"]
   ];
-  const scalesList = (typeof SCALES_DATA !== 'undefined') ? SCALES_DATA : defaultScales;
+
+  const scalesList = SCALES_DATA;
 
   // Punkte-Zonen: max = Radius in % der Feldbreite. Von innen nach außen sortiert lassen!
   const SCORE_BANDS = [
@@ -663,7 +740,7 @@
   function pickPairs(blockedKeys) {
     const blocked = new Set(blockedKeys);
     let pool = scalesList.filter(p => !blocked.has(pairKey(p)));
-    if (pool.length < 2) pool = scalesList.slice(); // Notbremse bei sehr kurzer scales.js
+    if (pool.length < 2) pool = scalesList.slice(); // Notbremse bei sehr kurzer Skalenliste
     const first = pool[Math.floor(Math.random() * pool.length)];
     let rest = pool.filter(p => pairKey(p) !== pairKey(first) && !sharesWord(p, first));
     if (!rest.length) rest = pool.filter(p => pairKey(p) !== pairKey(first));
