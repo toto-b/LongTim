@@ -128,6 +128,11 @@
       outline: none;
       border-color: var(--guess);
     }
+    #hint-input:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      border-style: dashed;
+    }
     .controls {
       display: flex;
       gap: 10px;
@@ -217,11 +222,10 @@
   ];
   const scalesList = (typeof SCALES_DATA !== 'undefined') ? SCALES_DATA : defaultScales;
 
-  // Punkte-Zonen: max = Radius in % der Feldbreite. Von innen nach außen sortiert lassen!
   const SCORE_BANDS = [
-    { max: 6,  points: 4, fill: 'rgba(46,204,113,0.22)', stroke: '#2ecc71' },
+    { max: 7,  points: 4, fill: 'rgba(46,204,113,0.22)', stroke: '#2ecc71' },
     { max: 14, points: 3, fill: 'rgba(241,196,15,0.15)', stroke: '#f1c40f' },
-    { max: 20, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
+    { max: 21, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
     { max: 28, points: 1, fill: 'rgba(141,153,174,0.08)', stroke: '#8d99ae' }
   ];
 
@@ -264,6 +268,8 @@
     state.guess = null;
     state.phase = 'SETUP';
     hintInput.value = '';
+    hintInput.disabled = false;
+    hintInput.placeholder = 'Hinweis eingeben (optional)...';
     targetMarker.style.display = 'none';
     guessMarker.style.display = 'none';
     ringLayer.innerHTML = '';
@@ -287,6 +293,8 @@
       statusText.innerText = "Klicke ins Feld, um einen Tipp zu setzen.";
       document.getElementById('btn-reveal').innerText = "Ziel anzeigen (Hinweisgeber)";
       document.getElementById('btn-reveal').disabled = true;
+      hintInput.disabled = true;
+      if (!hintInput.value.trim()) hintInput.placeholder = 'Hinweis wurde mündlich gegeben';
       state.phase = 'GUESSING';
     }
   }
@@ -303,7 +311,6 @@
   });
   function drawScoreRings(center) {
     ringLayer.innerHTML = '';
-    // Von groß nach klein anlegen, damit die inneren Ringe oben liegen.
     [...SCORE_BANDS].sort((a, b) => b.max - a.max).forEach(band => {
       const ring = document.createElement('div');
       ring.className = 'ring';
@@ -327,7 +334,7 @@
     const band = SCORE_BANDS.find(b => distance <= b.max);
     const points = band ? band.points : 0;
 
-    drawScoreRings(state.guess); // state.target einsetzen, falls die Ringe ums Ziel liegen sollen
+    drawScoreRings(state.guess);
 
     statusText.innerText = `Ergebnis: ${points} Punkte! (Abweichung: ${Math.round(distance)})`;
     document.getElementById('btn-submit').disabled = true;
