@@ -13,7 +13,6 @@
       --target: #8d99ae;
       --guess: #ffb703;
     }
-
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
@@ -24,7 +23,6 @@
       padding: 20px;
       margin: 0;
     }
-
     .container {
       max-width: 600px;
       width: 100%;
@@ -32,7 +30,6 @@
       flex-direction: column;
       gap: 15px;
     }
-
     .grid-wrapper {
       display: grid;
       grid-template-columns: 100px 1fr 100px;
@@ -44,7 +41,6 @@
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
-
     .label {
       font-weight: bold;
       text-align: center;
@@ -54,7 +50,6 @@
     .label-bottom { grid-column: 2; grid-row: 3; }
     .label-left { grid-column: 1; grid-row: 2; }
     .label-right { grid-column: 3; grid-row: 2; }
-
     #grid {
       grid-column: 2;
       grid-row: 2;
@@ -65,8 +60,8 @@
       position: relative;
       cursor: crosshair;
       border-radius: 8px;
+      overflow: hidden;
     }
-
     .marker {
       width: 16px;
       height: 16px;
@@ -76,20 +71,38 @@
       pointer-events: none;
       display: none;
     }
-
     #target-marker {
       background: var(--accent);
       border: 2px solid white;
       box-shadow: 0 0 10px var(--accent);
       z-index: 2;
     }
-
     #guess-marker {
       background: var(--guess);
       border: 2px solid black;
       z-index: 3;
     }
-
+    #ring-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px dashed;
+      box-sizing: border-box;
+      animation: ring-in 0.35s ease-out;
+    }
+    @keyframes ring-in {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ring { animation: none; }
+    }
     .status-panel {
       background: var(--card);
       padding: 15px;
@@ -97,11 +110,9 @@
       text-align: center;
       font-size: 1.1rem;
     }
-
     .hint-container {
       width: 100%;
     }
-
     #hint-input {
       width: 100%;
       padding: 12px;
@@ -113,18 +124,15 @@
       box-sizing: border-box;
       text-align: center;
     }
-
     #hint-input:focus {
       outline: none;
       border-color: var(--guess);
     }
-
     .controls {
       display: flex;
       gap: 10px;
       justify-content: center;
     }
-
     button {
       background: var(--card);
       color: var(--text);
@@ -135,30 +143,25 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-
     button:hover {
       background: var(--text);
       color: var(--bg);
     }
-
     button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
     }
-
     .history {
       margin-top: 15px;
       background: var(--card);
       padding: 15px;
       border-radius: 8px;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
     }
-
     th, td {
       border-bottom: 1px solid #444;
       padding: 6px;
@@ -167,31 +170,27 @@
   </style>
 </head>
 <body>
-
 <div class="container">
   <div class="grid-wrapper">
     <div class="label label-top" id="label-top">Oben</div>
     <div class="label label-left" id="label-left">Links</div>
     <div id="grid">
+      <div id="ring-layer"></div>
       <div id="target-marker" class="marker"></div>
       <div id="guess-marker" class="marker"></div>
     </div>
     <div class="label label-right" id="label-right">Rechts</div>
     <div class="label label-bottom" id="label-bottom">Unten</div>
   </div>
-
   <div class="status-panel" id="status-text">Starte eine neue Runde.</div>
-
   <div class="hint-container">
     <input type="text" id="hint-input" placeholder="Hinweis eingeben (optional)..." autocomplete="off">
   </div>
-
   <div class="controls">
     <button id="btn-next" onclick="nextRound()">Neue Runde</button>
     <button id="btn-reveal" onclick="toggleTargetView()" disabled>Ziel anzeigen (Hinweisgeber)</button>
     <button id="btn-submit" onclick="submitGuess()" disabled>Tipp einloggen</button>
   </div>
-
   <div class="history">
     <h3>Runden-Historie</h3>
     <table>
@@ -208,7 +207,6 @@
     </table>
   </div>
 </div>
-
 <script src="scales.js"></script>
 <script>
   const defaultScales = [
@@ -217,8 +215,15 @@
     ["Gefährlich", "Harmlos"],
     ["Rund", "Eckig"]
   ];
-
   const scalesList = (typeof SCALES_DATA !== 'undefined') ? SCALES_DATA : defaultScales;
+
+  // Punkte-Zonen: max = Radius in % der Feldbreite. Von innen nach außen sortiert lassen!
+  const SCORE_BANDS = [
+    { max: 6,  points: 4, fill: 'rgba(46,204,113,0.22)', stroke: '#2ecc71' },
+    { max: 14, points: 3, fill: 'rgba(241,196,15,0.15)', stroke: '#f1c40f' },
+    { max: 20, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
+    { max: 28, points: 1, fill: 'rgba(141,153,174,0.08)', stroke: '#8d99ae' }
+  ];
 
   let state = {
     target: { x: 0, y: 0 },
@@ -228,18 +233,16 @@
     axisX: [],
     axisY: []
   };
-
   const grid = document.getElementById('grid');
+  const ringLayer = document.getElementById('ring-layer');
   const targetMarker = document.getElementById('target-marker');
   const guessMarker = document.getElementById('guess-marker');
   const statusText = document.getElementById('status-text');
   const hintInput = document.getElementById('hint-input');
-
   function getRandomScalePair() {
     const pair = scalesList[Math.floor(Math.random() * scalesList.length)];
     return Math.random() < 0.5 ? [pair[0], pair[1]] : [pair[1], pair[0]];
   }
-
   function nextRound() {
     state.roundCount++;
     
@@ -248,36 +251,31 @@
     while (pair1[0] === pair2[0] || pair1[0] === pair2[1]) {
       pair2 = getRandomScalePair();
     }
-
     state.axisX = pair1;
     state.axisY = pair2;
-
     document.getElementById('label-left').innerText = state.axisX[0];
     document.getElementById('label-right').innerText = state.axisX[1];
     document.getElementById('label-top').innerText = state.axisY[0];
     document.getElementById('label-bottom').innerText = state.axisY[1];
-
     state.target = {
       x: Math.floor(Math.random() * 80) + 10,
       y: Math.floor(Math.random() * 80) + 10
     };
-
     state.guess = null;
     state.phase = 'SETUP';
-
     hintInput.value = '';
     targetMarker.style.display = 'none';
     guessMarker.style.display = 'none';
+    ringLayer.innerHTML = '';
     
     targetMarker.style.left = state.target.x + '%';
     targetMarker.style.top = state.target.y + '%';
-
     statusText.innerText = "Runde " + state.roundCount + ": Hinweisgeber klickt auf 'Ziel anzeigen'.";
     
     document.getElementById('btn-reveal').disabled = false;
+    document.getElementById('btn-reveal').innerText = "Ziel anzeigen (Hinweisgeber)";
     document.getElementById('btn-submit').disabled = true;
   }
-
   function toggleTargetView() {
     if (state.phase === 'SETUP') {
       targetMarker.style.display = 'block';
@@ -292,51 +290,54 @@
       state.phase = 'GUESSING';
     }
   }
-
   grid.addEventListener('click', (e) => {
     if (state.phase !== 'GUESSING') return;
-
     const rect = grid.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-
     state.guess = { x: Math.round(x), y: Math.round(y) };
-
     guessMarker.style.left = state.guess.x + '%';
     guessMarker.style.top = state.guess.y + '%';
     guessMarker.style.display = 'block';
-
     document.getElementById('btn-submit').disabled = false;
   });
-
+  function drawScoreRings(center) {
+    ringLayer.innerHTML = '';
+    // Von groß nach klein anlegen, damit die inneren Ringe oben liegen.
+    [...SCORE_BANDS].sort((a, b) => b.max - a.max).forEach(band => {
+      const ring = document.createElement('div');
+      ring.className = 'ring';
+      ring.style.left = center.x + '%';
+      ring.style.top = center.y + '%';
+      ring.style.width = (band.max * 2) + '%';
+      ring.style.height = (band.max * 2) + '%';
+      ring.style.background = band.fill;
+      ring.style.borderColor = band.stroke;
+      ringLayer.appendChild(ring);
+    });
+  }
   function submitGuess() {
     if (!state.guess) return;
-
     state.phase = 'REVEALED';
     targetMarker.style.display = 'block';
-
     const dx = state.target.x - state.guess.x;
     const dy = state.target.y - state.guess.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
-    let points = 0;
-    if (distance <= 6) points = 4;
-    else if (distance <= 14) points = 3;
-    else if (distance <= 24) points = 2;
+    const band = SCORE_BANDS.find(b => distance <= b.max);
+    const points = band ? band.points : 0;
+
+    drawScoreRings(state.guess); // state.target einsetzen, falls die Ringe ums Ziel liegen sollen
 
     statusText.innerText = `Ergebnis: ${points} Punkte! (Abweichung: ${Math.round(distance)})`;
-
     document.getElementById('btn-submit').disabled = true;
     document.getElementById('btn-reveal').disabled = true;
-
     addHistoryEntry(points, hintInput.value.trim());
   }
-
   function escapeHtml(str) {
     if (!str) return '';
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
-
   function addHistoryEntry(points, hintText) {
     const tbody = document.getElementById('history-body');
     const tr = document.createElement('tr');
