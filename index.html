@@ -12,6 +12,8 @@
       --accent: #ef233c;
       --target: #8d99ae;
       --guess: #ffb703;
+      --active: #4cc9f0;
+      --counter: #b5179e;
       --grid-size: clamp(220px, 58vmin, 460px);
     }
     body {
@@ -114,9 +116,13 @@
       text-align: center;
       font-size: 1.1rem;
     }
-    .hint-container {
-      width: 100%;
+    .role-line {
+      font-size: 0.9rem;
+      color: var(--target);
+      margin-top: 6px;
+      display: none;
     }
+    .hint-container { width: 100%; }
     #hint-input {
       width: 100%;
       padding: 12px;
@@ -128,15 +134,8 @@
       box-sizing: border-box;
       text-align: center;
     }
-    #hint-input:focus {
-      outline: none;
-      border-color: var(--guess);
-    }
-    #hint-input:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      border-style: dashed;
-    }
+    #hint-input:focus { outline: none; border-color: var(--guess); }
+    #hint-input:disabled { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
     .controls {
       display: flex;
       gap: 10px;
@@ -153,20 +152,114 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    button:hover:not(:disabled) {
-      background: var(--text);
-      color: var(--bg);
-    }
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .history {
-      margin-top: 15px;
+    button:hover:not(:disabled) { background: var(--text); color: var(--bg); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-small { padding: 6px 12px; font-size: 0.85rem; }
+
+    /* --- Teams --- */
+    .panel {
       background: var(--card);
-      padding: 15px;
       border-radius: 8px;
+      padding: 15px;
     }
+    .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .team-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #3d405b;
+      border: 2px solid transparent;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.95rem;
+    }
+    .team-chip.is-active { border-color: var(--active); }
+    .team-chip.is-counter { border-color: var(--counter); }
+    .team-chip .score { font-weight: bold; font-size: 1.1rem; }
+    .team-chip .role {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.85;
+    }
+    details.panel summary {
+      cursor: pointer;
+      font-weight: bold;
+      list-style: none;
+    }
+    details.panel summary::-webkit-details-marker { display: none; }
+    details.panel summary::before { content: '▸ '; }
+    details.panel[open] summary::before { content: '▾ '; }
+    .team-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .team-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--target);
+      background: #3d405b;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    .team-row .score-box {
+      width: 3.5rem;
+      text-align: center;
+      font-weight: bold;
+    }
+    .team-admin-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .hint-text {
+      font-size: 0.8rem;
+      color: var(--target);
+      margin-top: 10px;
+    }
+
+    /* --- Gegentipp --- */
+    #counter-panel { display: none; }
+    #counter-panel h3 { margin: 0 0 4px; }
+    .quadrant-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .quadrant-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 14px 8px;
+      line-height: 1.2;
+    }
+    .quadrant-btn .arrow { font-size: 1.5rem; }
+    .quadrant-btn .words {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+    .quadrant-btn.selected {
+      background: var(--counter);
+      border-color: var(--counter);
+      color: #fff;
+    }
+    .quadrant-btn.selected .words { opacity: 1; }
+
+    .history { background: var(--card); padding: 15px; border-radius: 8px; }
     .history-header {
       display: flex;
       align-items: center;
@@ -175,20 +268,12 @@
       margin-bottom: 10px;
     }
     .history-header h3 { margin: 0; }
-    .btn-small {
-      padding: 6px 12px;
-      font-size: 0.85rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.85rem;
-    }
-    th, td {
-      border-bottom: 1px solid #444;
-      padding: 6px;
-      text-align: left;
-    }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { border-bottom: 1px solid #444; padding: 6px; text-align: left; vertical-align: top; }
+    td .scales { font-size: 0.75rem; color: var(--target); }
+    .ok { color: #2ecc71; }
+    .miss { color: var(--target); }
     #storage-note {
       font-size: 0.8rem;
       color: var(--target);
@@ -199,6 +284,9 @@
 </head>
 <body>
 <div class="container">
+
+  <div class="panel scoreboard" id="scoreboard"></div>
+
   <div class="grid-wrapper">
     <div class="label label-top" id="label-top">Oben</div>
     <div class="label label-left" id="label-left">Links</div>
@@ -210,36 +298,66 @@
     <div class="label label-right" id="label-right">Rechts</div>
     <div class="label label-bottom" id="label-bottom">Unten</div>
   </div>
-  <div class="status-panel" id="status-text">Starte eine neue Runde.</div>
+
+  <div class="status-panel">
+    <div id="status-text">Starte eine neue Runde.</div>
+    <div class="role-line" id="role-text"></div>
+  </div>
+
   <div class="hint-container">
     <input type="text" id="hint-input" placeholder="Hinweis eingeben (optional)..." autocomplete="off">
   </div>
+
   <div class="controls">
     <button id="btn-next" onclick="nextRound()">Neue Runde</button>
     <button id="btn-redraw" onclick="redrawScales()" disabled>Skalen neu ziehen</button>
     <button id="btn-reveal" onclick="toggleTargetView()" disabled>Ziel anzeigen (Hinweisgeber)</button>
     <button id="btn-submit" onclick="submitGuess()" disabled>Tipp einloggen</button>
   </div>
-  <div id="storage-note">Speichern nicht möglich – die Historie geht beim Neuladen verloren.</div>
+
+  <div class="panel" id="counter-panel">
+    <h3>Gegentipp</h3>
+    <div id="counter-team-line"></div>
+    <div class="quadrant-grid" id="quadrant-grid"></div>
+    <div class="controls" style="margin-top:12px">
+      <button id="btn-evaluate" onclick="evaluateRound()" disabled>Auswerten</button>
+    </div>
+  </div>
+
+  <details class="panel" id="team-panel">
+    <summary>Teams verwalten</summary>
+    <div id="team-list"></div>
+    <div class="team-admin-actions">
+      <button class="btn-small" onclick="addTeam()">+ Team</button>
+      <button class="btn-small" onclick="resetScores()">Punkte zurücksetzen</button>
+    </div>
+    <div class="hint-text" id="team-hint"></div>
+  </details>
+
+  <div id="storage-note">Speichern nicht möglich – Punkte und Historie gehen beim Neuladen verloren.</div>
+
   <div class="history">
     <div class="history-header">
       <h3>Runden-Historie</h3>
       <button class="btn-small" onclick="clearHistory()">Verlauf löschen</button>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>X-Achse</th>
-          <th>Y-Achse</th>
-          <th>Hinweis</th>
-          <th>Punkte</th>
-        </tr>
-      </thead>
-      <tbody id="history-body"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Team</th>
+            <th>Hinweis</th>
+            <th>Pkt</th>
+            <th>Gegentipp</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
+
 <script src="scales.js"></script>
 <script>
   const defaultScales = [
@@ -257,10 +375,18 @@
     { max: 20, points: 2, fill: 'rgba(231,76,60,0.10)',  stroke: '#e74c3c' },
     { max: 28, points: 1, fill: 'rgba(141,153,174,0.08)', stroke: '#8d99ae' }
   ];
+  const COUNTER_POINTS = 1;
 
   // So viele zuletzt gespielte Skalen bleiben gesperrt (2 pro Runde).
   const RECENT_MEMORY = 5;
-  const STORAGE_KEY = 'longlongwave.2d.v1';
+  const STORAGE_KEY = 'longlongwave.2d.v2';
+
+  const QUADRANTS = [
+    { key: 'tl', arrow: '↖' },
+    { key: 'tr', arrow: '↗' },
+    { key: 'bl', arrow: '↙' },
+    { key: 'br', arrow: '↘' }
+  ];
 
   let state = {
     target: { x: 0, y: 0 },
@@ -270,7 +396,14 @@
     axisX: [],
     axisY: [],
     recentPairs: [],
-    history: []
+    history: [],
+    teams: [],
+    order: [],        // Strom aus Team-IDs; Nachfolger = Gegentipper = nächstes aktives Team
+    orderIndex: 0,
+    activeId: null,
+    counterId: null,
+    counterPick: null,
+    nextTeamId: 1
   };
 
   const grid = document.getElementById('grid');
@@ -278,10 +411,13 @@
   const targetMarker = document.getElementById('target-marker');
   const guessMarker = document.getElementById('guess-marker');
   const statusText = document.getElementById('status-text');
+  const roleText = document.getElementById('role-text');
   const hintInput = document.getElementById('hint-input');
   const btnRedraw = document.getElementById('btn-redraw');
   const btnReveal = document.getElementById('btn-reveal');
   const btnSubmit = document.getElementById('btn-submit');
+  const btnEvaluate = document.getElementById('btn-evaluate');
+  const counterPanel = document.getElementById('counter-panel');
 
   /* ---------- Speicherung ---------- */
 
@@ -290,7 +426,11 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         roundCount: state.roundCount,
         recentPairs: state.recentPairs,
-        history: state.history
+        history: state.history,
+        teams: state.teams,
+        order: state.order,
+        orderIndex: state.orderIndex,
+        nextTeamId: state.nextTeamId
       }));
     } catch (e) {
       document.getElementById('storage-note').style.display = 'block';
@@ -300,41 +440,226 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      state.roundCount = saved.roundCount || 0;
-      state.recentPairs = Array.isArray(saved.recentPairs) ? saved.recentPairs : [];
-      state.history = Array.isArray(saved.history) ? saved.history : [];
-      renderHistory();
-      if (state.roundCount > 0) {
-        statusText.innerText = state.roundCount + " Runden gespielt. Weiter mit 'Neue Runde'.";
+      if (raw) {
+        const saved = JSON.parse(raw);
+        state.roundCount = saved.roundCount || 0;
+        state.recentPairs = Array.isArray(saved.recentPairs) ? saved.recentPairs : [];
+        state.history = Array.isArray(saved.history) ? saved.history : [];
+        state.teams = Array.isArray(saved.teams) ? saved.teams : [];
+        state.order = Array.isArray(saved.order) ? saved.order : [];
+        state.orderIndex = saved.orderIndex || 0;
+        state.nextTeamId = saved.nextTeamId || (state.teams.length + 1);
+        if (state.roundCount > 0) {
+          statusText.innerText = state.roundCount + " Runden gespielt. Weiter mit 'Neue Runde'.";
+        }
       }
     } catch (e) {
       document.getElementById('storage-note').style.display = 'block';
     }
+    renderTeams();
+    renderScoreboard();
+    renderHistory();
   }
 
   function clearHistory() {
-    if (state.history.length && !confirm('Historie und Rundenzähler wirklich zurücksetzen?')) return;
+    if (state.history.length && !confirm('Historie, Rundenzähler und Punktestände zurücksetzen?')) return;
     state.roundCount = 0;
     state.recentPairs = [];
     state.history = [];
+    state.order = [];
+    state.orderIndex = 0;
+    state.activeId = null;
+    state.counterId = null;
+    state.teams.forEach(t => t.score = 0);
     renderHistory();
+    renderScoreboard();
+    renderTeams();
     saveState();
     statusText.innerText = 'Verlauf gelöscht. Starte eine neue Runde.';
+    roleText.style.display = 'none';
+  }
+
+  /* ---------- Teams ---------- */
+
+  function addTeam() {
+    state.teams.push({ id: state.nextTeamId++, name: 'Team ' + (state.teams.length + 1), score: 0 });
+    renderTeams();
+    renderScoreboard();
+    saveState();
+  }
+
+  function removeTeam(id) {
+    state.teams = state.teams.filter(t => t.id !== id);
+    // Aus dem kommenden Ablauf entfernen, ohne die laufende Reihenfolge neu zu würfeln.
+    const before = state.order.slice(0, state.orderIndex).filter(x => x !== id);
+    const after = state.order.slice(state.orderIndex).filter(x => x !== id);
+    state.orderIndex = before.length;
+    state.order = before.concat(after);
+    if (state.activeId === id) state.activeId = null;
+    if (state.counterId === id) state.counterId = null;
+    renderTeams();
+    renderScoreboard();
+    saveState();
+  }
+
+  function renameTeam(id, value) {
+    const team = state.teams.find(t => t.id === id);
+    if (!team) return;
+    team.name = value;
+    renderScoreboard();
+    renderHistory();
+    saveState();
+  }
+
+  function adjustScore(id, delta) {
+    const team = state.teams.find(t => t.id === id);
+    if (!team) return;
+    team.score = Math.max(0, team.score + delta);
+    renderTeams();
+    renderScoreboard();
+    saveState();
+  }
+
+  function resetScores() {
+    state.teams.forEach(t => t.score = 0);
+    renderTeams();
+    renderScoreboard();
+    saveState();
+  }
+
+  function teamName(id) {
+    const team = state.teams.find(t => t.id === id);
+    return team ? team.name : '—';
+  }
+
+  function renderTeams() {
+    const list = document.getElementById('team-list');
+    list.innerHTML = '';
+    state.teams.forEach(team => {
+      const row = document.createElement('div');
+      row.className = 'team-row';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = team.name;
+      input.addEventListener('input', () => renameTeam(team.id, input.value));
+      row.appendChild(input);
+
+      const minus = document.createElement('button');
+      minus.className = 'btn-small';
+      minus.innerText = '−';
+      minus.title = 'Punkt abziehen';
+      minus.onclick = () => adjustScore(team.id, -1);
+      row.appendChild(minus);
+
+      const score = document.createElement('span');
+      score.className = 'score-box';
+      score.innerText = team.score;
+      row.appendChild(score);
+
+      const plus = document.createElement('button');
+      plus.className = 'btn-small';
+      plus.innerText = '+';
+      plus.title = 'Punkt geben';
+      plus.onclick = () => adjustScore(team.id, 1);
+      row.appendChild(plus);
+
+      const del = document.createElement('button');
+      del.className = 'btn-small';
+      del.innerText = '✕';
+      del.title = 'Team entfernen';
+      del.onclick = () => removeTeam(team.id);
+      row.appendChild(del);
+
+      list.appendChild(row);
+    });
+
+    const hint = document.getElementById('team-hint');
+    if (state.teams.length === 0) {
+      hint.innerText = 'Ohne Teams läuft das Spiel wie bisher – nur Punkte pro Runde, keine Rotation.';
+    } else if (state.teams.length === 1) {
+      hint.innerText = 'Ab zwei Teams gibt es Rotation und Gegentipp.';
+    } else {
+      hint.innerText = 'Reihenfolge wird pro Durchgang neu gemischt. Wer den Gegentipp gibt, ist in der nächsten Runde dran.';
+    }
+  }
+
+  function renderScoreboard() {
+    const board = document.getElementById('scoreboard');
+    board.innerHTML = '';
+    if (!state.teams.length) {
+      board.innerHTML = '<span class="hint-text" style="margin:0">Keine Teams – unter „Teams verwalten" anlegen.</span>';
+      return;
+    }
+    state.teams.forEach(team => {
+      const chip = document.createElement('div');
+      chip.className = 'team-chip';
+      let role = '';
+      if (team.id === state.activeId) { chip.classList.add('is-active'); role = 'am Zug'; }
+      else if (team.id === state.counterId) { chip.classList.add('is-counter'); role = 'Gegentipp'; }
+      chip.innerHTML = `<span>${escapeHtml(team.name)}</span>` +
+        (role ? `<span class="role">${role}</span>` : '') +
+        `<span class="score">${team.score}</span>`;
+      board.appendChild(chip);
+    });
+  }
+
+  /* ---------- Reihenfolge ---------- */
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Hängt einen frisch gemischten Durchgang an, in dem jedes Team genau einmal vorkommt.
+  function refillOrder() {
+    const ids = state.teams.map(t => t.id);
+    if (!ids.length) return;
+    const chunk = shuffle(ids);
+    const last = state.order[state.order.length - 1];
+    if (chunk.length > 1 && chunk[0] === last) {
+      const j = 1 + Math.floor(Math.random() * (chunk.length - 1));
+      [chunk[0], chunk[j]] = [chunk[j], chunk[0]];
+    }
+    state.order = state.order.concat(chunk);
+  }
+
+  function ensureOrder() {
+    let guard = 0;
+    while (state.order.length - state.orderIndex < 2 && guard++ < 10) refillOrder();
+    // Vergangenes abschneiden, damit der Strom nicht endlos wächst.
+    if (state.orderIndex > 40) {
+      state.order = state.order.slice(state.orderIndex);
+      state.orderIndex = 0;
+    }
+  }
+
+  function assignRoles() {
+    if (state.teams.length === 0) {
+      state.activeId = null;
+      state.counterId = null;
+      return;
+    }
+    if (state.teams.length === 1) {
+      state.activeId = state.teams[0].id;
+      state.counterId = null;
+      return;
+    }
+    ensureOrder();
+    state.activeId = state.order[state.orderIndex];
+    state.counterId = state.order[state.orderIndex + 1];
+    state.orderIndex++;
   }
 
   /* ---------- Skalen ziehen ---------- */
 
-  function pairKey(pair) {
-    return [...pair].sort().join('|');
-  }
-  function orient(pair) {
-    return Math.random() < 0.5 ? [pair[0], pair[1]] : [pair[1], pair[0]];
-  }
-  function sharesWord(a, b) {
-    return a.some(word => b.includes(word));
-  }
+  function pairKey(pair) { return [...pair].sort().join('|'); }
+  function orient(pair) { return Math.random() < 0.5 ? [pair[0], pair[1]] : [pair[1], pair[0]]; }
+  function sharesWord(a, b) { return a.some(word => b.includes(word)); }
+
   function pickPairs(blockedKeys) {
     const blocked = new Set(blockedKeys);
     let pool = scalesList.filter(p => !blocked.has(pairKey(p)));
@@ -345,6 +670,7 @@
     const second = rest[Math.floor(Math.random() * rest.length)];
     return [orient(first), orient(second)];
   }
+
   function applyPairs(pairX, pairY) {
     state.axisX = pairX;
     state.axisY = pairY;
@@ -353,6 +679,7 @@
     document.getElementById('label-top').innerText = pairY[0];
     document.getElementById('label-bottom').innerText = pairY[1];
   }
+
   function redrawScales() {
     if (state.phase !== 'SETUP') return;
     // Die gerade verworfenen Skalen zusätzlich sperren, sonst kommen sie sofort wieder.
@@ -364,6 +691,13 @@
 
   /* ---------- Rundenablauf ---------- */
 
+  function updateRoleLine() {
+    if (!state.activeId) { roleText.style.display = 'none'; return; }
+    roleText.style.display = 'block';
+    const counterPart = state.counterId ? ` · Gegentipp: ${escapeHtml(teamName(state.counterId))}` : '';
+    roleText.innerHTML = `Am Zug: ${escapeHtml(teamName(state.activeId))}${counterPart}`;
+  }
+
   function nextRound() {
     // Skalen der abgeschlossenen Runde in die Sperrliste schieben.
     if (state.axisX.length && state.axisY.length) {
@@ -371,6 +705,7 @@
       state.recentPairs = state.recentPairs.slice(-RECENT_MEMORY);
     }
     state.roundCount++;
+    assignRoles();
 
     const [pairX, pairY] = pickPairs(state.recentPairs);
     applyPairs(pairX, pairY);
@@ -380,6 +715,7 @@
       y: Math.floor(Math.random() * 80) + 10
     };
     state.guess = null;
+    state.counterPick = null;
     state.phase = 'SETUP';
     hintInput.value = '';
     hintInput.disabled = false;
@@ -387,10 +723,15 @@
     targetMarker.style.display = 'none';
     guessMarker.style.display = 'none';
     ringLayer.innerHTML = '';
+    counterPanel.style.display = 'none';
 
     targetMarker.style.left = state.target.x + '%';
     targetMarker.style.top = state.target.y + '%';
-    statusText.innerText = "Runde " + state.roundCount + ": Hinweisgeber klickt auf 'Ziel anzeigen'.";
+
+    const who = state.activeId ? escapeHtml(teamName(state.activeId)) + ': Hinweisgeber' : 'Hinweisgeber';
+    statusText.innerHTML = `Runde ${state.roundCount} – ${who} klickt auf 'Ziel anzeigen'.`;
+    updateRoleLine();
+    renderScoreboard();
 
     btnRedraw.disabled = false;
     btnReveal.disabled = false;
@@ -429,6 +770,66 @@
     btnSubmit.disabled = false;
   });
 
+  function submitGuess() {
+    if (!state.guess) return;
+    btnSubmit.disabled = true;
+    btnReveal.disabled = true;
+    btnRedraw.disabled = true;
+    if (state.counterId) {
+      startCounterPhase();
+    } else {
+      revealRound();
+    }
+  }
+
+  /* ---------- Gegentipp ---------- */
+
+  function startCounterPhase() {
+    state.phase = 'COUNTER';
+    state.counterPick = null;
+    btnEvaluate.disabled = true;
+    document.getElementById('counter-team-line').innerHTML =
+      `<strong>${escapeHtml(teamName(state.counterId))}</strong>: In welchem Bereich um den gelben Tipp liegt das Ziel?`;
+    renderQuadrantButtons();
+    counterPanel.style.display = 'block';
+    statusText.innerText = 'Tipp steht. Jetzt ist der Gegentipp dran.';
+    counterPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function renderQuadrantButtons() {
+    const wrap = document.getElementById('quadrant-grid');
+    wrap.innerHTML = '';
+    QUADRANTS.forEach(q => {
+      const vertical = q.key[0] === 't' ? state.axisY[0] : state.axisY[1];
+      const horizontal = q.key[1] === 'l' ? state.axisX[0] : state.axisX[1];
+      const btn = document.createElement('button');
+      btn.className = 'quadrant-btn';
+      btn.dataset.key = q.key;
+      btn.innerHTML = `<span class="arrow">${q.arrow}</span>` +
+        `<span class="words">${escapeHtml(vertical)}<br>${escapeHtml(horizontal)}</span>`;
+      btn.onclick = () => selectQuadrant(q.key);
+      wrap.appendChild(btn);
+    });
+  }
+
+  function selectQuadrant(key) {
+    if (state.phase !== 'COUNTER') return;
+    state.counterPick = key;
+    document.querySelectorAll('.quadrant-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.key === key);
+    });
+    btnEvaluate.disabled = false;
+  }
+
+  // Liegt das Ziel im gewählten Bereich? Auf einer Achse gleichauf zählt für beide Seiten.
+  function quadrantMatches(key, dx, dy) {
+    const horizOk = key[1] === 'l' ? dx <= 0 : dx >= 0;
+    const vertOk  = key[0] === 't' ? dy <= 0 : dy >= 0;
+    return horizOk && vertOk;
+  }
+
+  /* ---------- Auswertung ---------- */
+
   function drawScoreRings(center) {
     ringLayer.innerHTML = '';
     // Von groß nach klein anlegen, damit die inneren Ringe oben liegen.
@@ -445,40 +846,73 @@
     });
   }
 
-  function submitGuess() {
-    if (!state.guess) return;
+  function evaluateRound() {
+    if (state.phase !== 'COUNTER' || !state.counterPick) return;
+    revealRound();
+  }
+
+  function revealRound() {
     state.phase = 'REVEALED';
     targetMarker.style.display = 'block';
+
     const dx = state.target.x - state.guess.x;
     const dy = state.target.y - state.guess.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-
     const band = SCORE_BANDS.find(b => distance <= b.max);
     const points = band ? band.points : 0;
 
     drawScoreRings(state.guess); // state.target einsetzen, falls die Ringe ums Ziel liegen sollen
 
-    statusText.innerText = `Ergebnis: ${points} Punkte! (Abweichung: ${Math.round(distance)})`;
+    let counterCorrect = null;
+    if (state.counterId && state.counterPick) {
+      counterCorrect = quadrantMatches(state.counterPick, dx, dy);
+    }
+
+    if (state.activeId) adjustScoreSilent(state.activeId, points);
+    if (counterCorrect) adjustScoreSilent(state.counterId, COUNTER_POINTS);
+
+    let msg = state.activeId
+      ? `${teamName(state.activeId)}: ${points} Punkte (Abweichung: ${Math.round(distance)})`
+      : `Ergebnis: ${points} Punkte! (Abweichung: ${Math.round(distance)})`;
+    if (counterCorrect !== null) {
+      msg += counterCorrect
+        ? ` · ${teamName(state.counterId)}: +${COUNTER_POINTS} für den Gegentipp`
+        : ` · ${teamName(state.counterId)}: Gegentipp daneben`;
+    }
+    statusText.innerText = msg;
+
+    counterPanel.style.display = 'none';
     btnSubmit.disabled = true;
     btnReveal.disabled = true;
     btnRedraw.disabled = true;
-    addHistoryEntry(points, hintInput.value.trim());
+
+    addHistoryEntry(points, hintInput.value.trim(), counterCorrect);
+    renderTeams();
+    renderScoreboard();
+  }
+
+  function adjustScoreSilent(id, delta) {
+    const team = state.teams.find(t => t.id === id);
+    if (team) team.score = Math.max(0, team.score + delta);
   }
 
   /* ---------- Historie ---------- */
 
   function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    if (str === undefined || str === null || str === '') return '';
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  function addHistoryEntry(points, hintText) {
+  function addHistoryEntry(points, hintText, counterCorrect) {
     state.history.push({
       round: state.roundCount,
       axisX: state.axisX,
       axisY: state.axisY,
       hint: hintText,
-      points: points
+      points: points,
+      activeId: state.activeId,
+      counterId: state.counterId,
+      counterCorrect: counterCorrect
     });
     renderHistory();
     saveState();
@@ -489,12 +923,20 @@
     tbody.innerHTML = '';
     [...state.history].reverse().forEach(entry => {
       const tr = document.createElement('tr');
+      let counterCell = '<span class="miss">–</span>';
+      if (entry.counterId) {
+        counterCell = entry.counterCorrect
+          ? `<span class="ok">✔ ${escapeHtml(teamName(entry.counterId))} +${COUNTER_POINTS}</span>`
+          : `<span class="miss">✘ ${escapeHtml(teamName(entry.counterId))}</span>`;
+      }
       tr.innerHTML = `
         <td>${entry.round}</td>
-        <td>${escapeHtml(entry.axisX[0])} ↔ ${escapeHtml(entry.axisX[1])}</td>
-        <td>${escapeHtml(entry.axisY[0])} ↔ ${escapeHtml(entry.axisY[1])}</td>
-        <td>${escapeHtml(entry.hint) || '<em>-</em>'}</td>
+        <td>${entry.activeId ? escapeHtml(teamName(entry.activeId)) : '<em>–</em>'}
+          <div class="scales">${escapeHtml(entry.axisX[0])} ↔ ${escapeHtml(entry.axisX[1])}<br>
+          ${escapeHtml(entry.axisY[0])} ↔ ${escapeHtml(entry.axisY[1])}</div></td>
+        <td>${escapeHtml(entry.hint) || '<em>–</em>'}</td>
         <td><strong>${entry.points}</strong></td>
+        <td>${counterCell}</td>
       `;
       tbody.appendChild(tr);
     });
