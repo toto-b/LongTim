@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longwave
+  labels:
+    app.kubernetes.io/part-of: longwave
+    # Erzwingt die restriktive Pod-Security-Stufe fuer den ganzen Namespace.
+    # Beide Deployments sind darauf ausgelegt (non-root, keine Capabilities,
+    # seccomp) — die Kennzeichnung macht daraus eine Zusicherung, die der
+    # API-Server prueft, statt einer Absichtserklaerung.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted

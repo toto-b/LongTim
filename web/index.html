@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Longwave Online</title>
+  <meta name="description" content="Wavelength auf zwei Achsen — online, mit Lobbies.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="connection-banner" class="hidden">Verbindung verloren — verbinde neu …</div>
+
+<!-- ==================== Lobby-Bildschirm ==================== -->
+<div class="container hidden" id="screen-lobby">
+  <div class="panel">
+    <div>
+      <h1>🌊 Longwave Online</h1>
+      <p class="tagline">
+        Einer sieht das Ziel und gibt einen Hinweis. Alle anderen tippen.
+        Wer nah dran ist, bekommt Punkte.
+      </p>
+    </div>
+
+    <div class="field-row">
+      <label for="player-name">Dein Name</label>
+      <input type="text" id="player-name" maxlength="24" placeholder="z. B. Tobi" autocomplete="nickname">
+    </div>
+
+    <button class="primary" id="btn-create">Neue Lobby erstellen</button>
+
+    <div class="divider">oder</div>
+
+    <div class="field-row">
+      <label for="join-code">Lobby-Code</label>
+      <input type="text" id="join-code" maxlength="4" placeholder="ABCD"
+             autocomplete="off" autocapitalize="characters" spellcheck="false"
+             inputmode="text">
+    </div>
+    <button id="btn-join">Lobby beitreten</button>
+
+    <div id="lobby-error" role="alert"></div>
+  </div>
+  <footer>Kein Backend-State im Browser: Ziel und Punkte liegen auf dem Server.</footer>
+</div>
+
+<!-- ==================== Spielbildschirm ==================== -->
+<div class="container hidden" id="screen-game">
+
+  <div class="panel game-header">
+    <div>
+      <span class="code-badge" id="code-badge">····</span>
+      <button class="btn-small" id="btn-copy-link" title="Einladungslink kopieren">Link kopieren</button>
+    </div>
+    <div class="round-badge" id="round-badge"></div>
+  </div>
+
+  <div class="panel scoreboard" id="scoreboard"></div>
+
+  <div class="grid-wrapper">
+    <div class="label label-top" id="label-top">·</div>
+    <div class="label label-left" id="label-left">·</div>
+    <div id="grid">
+      <div id="ring-layer"></div>
+      <div id="marker-layer"></div>
+    </div>
+    <div class="label label-right" id="label-right">·</div>
+    <div class="label label-bottom" id="label-bottom">·</div>
+  </div>
+
+  <div class="bands" id="bands"></div>
+
+  <div class="status-panel">
+    <div id="status-text">Verbinde …</div>
+    <div class="role-line" id="role-text"></div>
+    <div id="error-line" role="alert"></div>
+  </div>
+
+  <!-- Hinweisgeber: Eingabefeld. Alle anderen: Anzeige. -->
+  <div class="field-row hidden" id="hint-input-row">
+    <input type="text" id="hint-input" maxlength="120"
+           placeholder="Hinweis eingeben (oder mündlich sagen) …" autocomplete="off">
+  </div>
+  <div class="hint-display hidden" id="hint-display">
+    <span class="caption">Hinweis</span>
+    <span id="hint-text"></span>
+  </div>
+
+  <div class="controls" id="controls">
+    <button id="btn-start" class="primary hidden">Runde starten</button>
+    <button id="btn-redraw" class="hidden">Skalen neu ziehen</button>
+    <button id="btn-hint" class="primary hidden">Hinweis abschicken</button>
+    <button id="btn-guess" class="primary hidden" disabled>Tipp bestätigen</button>
+    <button id="btn-reveal" class="hidden">Jetzt auswerten</button>
+    <button id="btn-next" class="primary hidden">Nächste Runde</button>
+  </div>
+
+  <div class="panel hidden" id="results-panel">
+    <h3>Ergebnis</h3>
+    <div class="results" id="results-list"></div>
+  </div>
+
+  <details class="panel" id="history-panel">
+    <summary>Runden-Verlauf</summary>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Hinweisgeber</th>
+            <th>Hinweis</th>
+            <th>Tipps</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <div class="controls">
+    <button class="btn-small" id="btn-reset">Punkte &amp; Verlauf zurücksetzen</button>
+    <button class="btn-small" id="btn-leave">Lobby verlassen</button>
+  </div>
+
+  <footer id="footer-note"></footer>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

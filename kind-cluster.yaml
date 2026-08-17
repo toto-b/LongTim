@@ -1,0 +1,27 @@
+# kind-Cluster fuer Longwave Online.
+#
+# Ein Control-Plane-Knoten reicht; die beiden Deployments laufen mit je zwei
+# Replicas darauf. Die extraPortMappings binden 80 und 443 des Hosts an den
+# Knoten, damit der ingress-nginx-Controller ohne LoadBalancer erreichbar ist —
+# lokal gibt es keinen Cloud-LB, der eine externe IP vergeben koennte.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: longwave
+
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      # Markiert den Knoten so, dass der ingress-nginx-Controller ihn als
+      # Ingress-Host akzeptiert (nodeSelector im kind-Deployment des Controllers).
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        protocol: TCP

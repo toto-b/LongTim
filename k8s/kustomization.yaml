@@ -1,0 +1,64 @@
+# Buendelt alle Manifeste: ein Aufruf bringt das komplette Spiel in den Cluster.
+#
+#   kustomize build --load-restrictor LoadRestrictionsNone k8s | kubectl apply -f -
+#
+# Das Flag ist noetig (siehe configMapGenerator unten); ein blosses
+# `kubectl apply -k k8s/` scheitert daran. Bequemer: `make deploy`.
+#
+# Die Manifeste bleiben absichtlich rohes YAML statt eines Helm-Charts. Sie sind
+# der pruefbare Teil der Aufgabe, und `{{ .Values… }}`-Templates wuerden genau
+# das verstecken. Helm kommt dort zum Einsatz, wofuer es gedacht ist: zum
+# Installieren einer fremden Komponente (kube-prometheus-stack).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: longwave
+
+resources:
+  - 00-namespace.yaml
+  - 10-configmap.yaml
+  - 20-server.yaml
+  - 30-web.yaml
+  - 40-ingress.yaml
+  - 50-servicemonitor.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: longwave
+    includeSelectors: false
+
+# Beide generierten ConfigMaps lesen aus der jeweils einzigen Quelldatei im Repo —
+# keine Kopien, die auseinanderlaufen koennen. Kustomize verbietet Pfade oberhalb
+# des eigenen Wurzelverzeichnisses, deshalb braucht der Aufruf
+#   --load-restrictor LoadRestrictionsNone
+# (siehe Makefile-Target `deploy`).
+configMapGenerator:
+  # Dieselbe Datei, die auch ins Binary eingebettet wird.
+  #
+  # Kustomize haengt an generierte ConfigMaps einen Inhalts-Hash. Aendert sich die
+  # Skalenliste, aendert sich der Name — und das Deployment bekommt automatisch
+  # einen neuen Pod. Ohne das wuerde der Server die alte Liste weiterbenutzen,
+  # weil er sie nur beim Start liest.
+  - name: longwave-scales
+    files:
+      - scales.json=../server/internal/scales/scales.json
+
+  # Das Grafana-Dashboard. Der Sidecar von kube-prometheus-stack sucht clusterweit
+  # nach dem Label grafana_dashboard=1 und laedt die Datei automatisch — kein
+  # Import ueber die Grafana-Oberflaeche noetig.
+  #
+  # Hier ohne Namens-Hash: der Sidecar erkennt Aenderungen am Inhalt selbst, und
+  # ein stabiler Name macht `kubectl get cm longwave-grafana-dashboard` bequem.
+  - name: longwave-grafana-dashboard
+    files:
+      - longwave.json=../monitoring/grafana-dashboard-longwave.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"
+
+images:
+  - name: longwave-server
+    newTag: dev
+  - name: longwave-web
+    newTag: dev

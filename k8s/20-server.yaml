@@ -1,0 +1,148 @@
+# Teil 2 von 2: der Game-Server.
+#
+# Zur Replica-Zahl: bewusst eine. Der Lobby-Zustand liegt im Prozessspeicher,
+# also muessen alle Spieler einer Lobby denselben Pod treffen. Cookie-basierte
+# Session-Affinitaet reicht dafuer NICHT — zwei Spieler mit demselben Lobby-Code
+# koennten auf verschiedenen Pods landen und sich dann gegenseitig nicht sehen,
+# obwohl beide "in ABCD" sind. Skalierung braucht daher zuerst einen geteilten
+# Zustand (Redis) oder ein Routing nach Lobby-Code. Siehe README, 12 Factor VIII.
+#
+# Aus demselben Grund "Recreate" statt einer rollierenden Aktualisierung: waehrend
+# eines Rollouts liefen sonst kurzzeitig zwei Pods mit getrennten Lobby-Bestaenden.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: longwave-server
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-server
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: longwave
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: longwave-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: longwave-server
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: longwave
+    spec:
+      # Muss ueber SHUTDOWN_TIMEOUT liegen, damit der Server seine
+      # WebSocket-Verbindungen selbst schliessen kann (12 Factor IX).
+      terminationGracePeriodSeconds: 20
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: server
+          image: longwave-server:dev
+          # kind laedt die Images direkt in den Knoten; ohne IfNotPresent wuerde
+          # Kubernetes vergeblich eine Registry befragen.
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            # Ein Port fuer alles: API, WebSocket und /metrics. Der ServiceMonitor
+            # spricht denselben Namen an.
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: longwave-server-config
+
+          env:
+            - name: PORT
+              value: "8080"
+            # Der Pod-Name im Log macht bei mehreren Replicas nachvollziehbar,
+            # welcher Prozess geschrieben hat.
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+          volumeMounts:
+            - name: scales
+              mountPath: /config
+              readOnly: true
+
+          # Liveness prueft nur, ob der Prozess laeuft — absichtlich ohne
+          # Abhaengigkeiten, sonst wird der Pod wegen fremder Probleme neu gestartet.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          # Readiness geht beim Herunterfahren sofort auf 503, damit der Ingress
+          # keine neuen Verbindungen mehr schickt.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+
+          # Startup-Probe haelt die Liveness-Probe zurueck, bis der Prozess steht.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 15
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              # Kein CPU-Limit: der Server ist I/O-getrieben, ein Limit wuerde
+              # unter Last nur Throttling bei den WebSocket-Schreibvorgaengen
+              # erzeugen. Die Requests reichen dem Scheduler.
+              memory: 128Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+      volumes:
+        - name: scales
+          configMap:
+            name: longwave-scales
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: longwave-server
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-server
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: longwave
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: longwave-server
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

@@ -1,0 +1,56 @@
+# Werte fuer das Helm-Chart ingress-nginx auf einem kind-Cluster.
+#
+# In der Cloud bekommt ein Ingress-Controller eine externe IP von einem
+# LoadBalancer. Lokal gibt es den nicht, deshalb bindet der Controller hier
+# direkt Port 80/443 des Knotens (hostPort) — und kind-cluster.yaml mappt diese
+# Ports auf den Host. So ist http://longwave.local erreichbar, ohne
+# port-forward.
+#
+# Bewusst per Helm statt per Roh-Manifest von raw.githubusercontent.com:
+# die Chart-Version ist gepinnt (siehe Makefile) und der Download laeuft nicht
+# in das Rate-Limit von GitHub.
+
+controller:
+  # Nur auf dem dafuer gekennzeichneten Knoten. kind-cluster.yaml setzt das
+  # Label ingress-ready=true auf die Control-Plane.
+  nodeSelector:
+    ingress-ready: "true"
+
+  # Ohne diese Toleranz wuerde der Pod nicht auf der Control-Plane starten.
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+
+  hostPort:
+    enabled: true
+    ports:
+      http: 80
+      https: 443
+
+  service:
+    # Kein LoadBalancer: der bliebe in kind dauerhaft "pending".
+    type: NodePort
+
+  # Eine Replica reicht lokal; ohne das wuerde der Standardwert mit
+  # Anti-Affinity auf dem Einzelknoten haengen bleiben.
+  replicaCount: 1
+
+  # Die Zulassungs-Webhooks brauchen auf einem Einzelknoten spuerbar lange und
+  # bringen lokal keinen Nutzen — sie pruefen nur, ob eine Ingress-Ressource
+  # eine gueltige nginx-Konfiguration ergibt.
+  admissionWebhooks:
+    enabled: false
+
+  # Metriken einschalten und dem Prometheus Operator melden. Damit taucht der
+  # Ingress-Controller neben dem Game-Server in Prometheus auf — praktisch, um
+  # WebSocket-Verbindungen von aussen zu sehen.
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi

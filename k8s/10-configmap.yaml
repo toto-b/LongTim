@@ -1,0 +1,31 @@
+# Laufzeitkonfiguration des Game-Servers.
+#
+# Der Server liest ausschliesslich Environment-Variablen (12 Factor III). Diese
+# ConfigMap ist damit der einzige Ort, an dem sich das Verhalten im Cluster
+# aendert — ohne Neubau eines Images.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longwave-server-config
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-server
+    app.kubernetes.io/part-of: longwave
+data:
+  # Die Skalen kommen aus der gemounteten ConfigMap statt aus dem Binary.
+  # Damit ist die Skalenliste eine austauschbare Ressource (12 Factor IV):
+  # anderer Inhalt, gleiches Image, kein Neubau.
+  SCALES_PATH: "/config/scales.json"
+
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+  # Nach dieser Zeit ohne jede Verbindung wird eine Lobby abgeraeumt.
+  LOBBY_TTL: "30m"
+
+  MAX_PLAYERS: "12"
+  MAX_LOBBIES: "500"
+
+  # Muss kleiner sein als terminationGracePeriodSeconds im Deployment, damit
+  # der Prozess von selbst fertig wird, bevor Kubernetes SIGKILL schickt.
+  SHUTDOWN_TIMEOUT: "10s"

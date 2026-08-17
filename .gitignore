@@ -1,0 +1,10 @@
+.direnv/
+longwave.txt
+longwave
+
+# Go
+server/bin/
+*.test
+
+# Projektlokale Kubeconfig (enthält Cluster-Zertifikate)
+.kube/

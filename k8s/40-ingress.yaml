@@ -1,0 +1,47 @@
+# Hier treffen die beiden Teile zusammen (Anforderung 4).
+#
+# Ein Host, zwei Backends, aufgeteilt nach Pfad:
+#   /api/*  ->  longwave-server  (REST + WebSocket)
+#   /*      ->  longwave-web     (statisches Frontend)
+#
+# Weil beides unter demselben Origin liegt, braucht das Frontend keine
+# einkompilierte Backend-URL: es baut "wss://<host>/api/ws" zur Laufzeit aus
+# location.host. Dasselbe Image laeuft dadurch unveraendert lokal und im Cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longwave
+  namespace: longwave
+  labels:
+    app.kubernetes.io/part-of: longwave
+  annotations:
+    # WebSocket-Verbindungen sind langlebig und zwischen zwei Spielzuegen still.
+    # Mit dem Standard-Timeout von 60s wuerde der Proxy sie mitten in der Runde
+    # kappen. Der Client haelt zusaetzlich alle 20s einen Ping offen.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+    # Kein Puffern: die Zustandsnachrichten sollen sofort durchgehen.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: longwave.local
+      http:
+        paths:
+          # Die spezifischere Regel zuerst — ingress-nginx sortiert Pfade nach
+          # Laenge, aber die Reihenfolge hier macht die Absicht lesbar.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: longwave-server
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longwave-web
+                port:
+                  name: http

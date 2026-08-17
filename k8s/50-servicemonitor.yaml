@@ -1,0 +1,33 @@
+# Bindeglied zur CNCF-Technologie: der ServiceMonitor ist eine Custom Resource
+# des Prometheus Operators (Teil von kube-prometheus-stack). Er sagt Prometheus,
+# welche Pods es abfragen soll — statt einer statischen Scrape-Konfiguration.
+#
+# Diese Datei setzt voraus, dass der Operator installiert ist. Fehlt er, kennt
+# der Cluster die CRD nicht und `kubectl apply` scheitert an dieser Ressource;
+# deshalb installiert `make up` das Monitoring mit.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: longwave-server
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-server
+    app.kubernetes.io/part-of: longwave
+    # kube-prometheus-stack achtet standardmaessig nur auf ServiceMonitors mit
+    # dem Label seines Helm-Releases. In monitoring/kube-prometheus-values.yaml
+    # ist diese Einschraenkung abgeschaltet, damit auch ohne passendes Label
+    # gefunden wird — das Label bleibt trotzdem gesetzt, damit die Zuordnung
+    # sichtbar ist.
+    release: kps
+spec:
+  namespaceSelector:
+    matchNames:
+      - longwave
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: longwave-server
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

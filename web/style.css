@@ -1,0 +1,383 @@
+/* Longwave Online — Stylesheet.
+   Aus dem <style>-Block der Offline-Fassung uebernommen und um die Teile
+   erweitert, die es dort nicht gab: Lobby-Bildschirm, Spielerliste mit Rollen
+   und mehrere Marker gleichzeitig im Feld. */
+
+:root {
+  --bg: #1e1e24;
+  --card: #2b2d42;
+  --field: #3d405b;
+  --text: #edf2f4;
+  --muted: #8d99ae;
+  --accent: #ef233c;
+  --guess: #ffb703;
+  --active: #4cc9f0;
+  --ok: #2ecc71;
+  --warn: #f1c40f;
+  --grid-size: clamp(220px, 58vmin, 460px);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 820px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+h1 { font-size: 1.5rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 0 0 10px; }
+h3 { font-size: 1rem; margin: 0; }
+
+.panel {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.hidden { display: none !important; }
+
+/* --- Verbindungsbanner --- */
+
+#connection-banner {
+  position: fixed;
+  inset: 0 0 auto 0;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  padding: 8px;
+  font-size: 0.9rem;
+  z-index: 50;
+}
+
+/* --- Lobby-Bildschirm --- */
+
+#screen-lobby { max-width: 460px; margin: 8vh auto 0; }
+#screen-lobby .panel { display: flex; flex-direction: column; gap: 12px; }
+#screen-lobby .tagline { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+.field-row { display: flex; flex-direction: column; gap: 6px; }
+.field-row label { font-size: 0.8rem; color: var(--muted); }
+
+input[type="text"] {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid var(--muted);
+  background: var(--field);
+  color: var(--text);
+  font-size: 1rem;
+}
+input[type="text"]:focus { outline: none; border-color: var(--guess); }
+input[type="text"]:disabled { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
+
+#join-code {
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-size: 1.4rem;
+  font-family: ui-monospace, monospace;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #444;
+}
+
+#lobby-error { color: var(--accent); font-size: 0.9rem; min-height: 1.2em; }
+
+/* --- Buttons --- */
+
+button {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--text);
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, opacity 0.2s;
+}
+button:hover:not(:disabled) { background: var(--text); color: var(--bg); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: var(--active); border-color: var(--active); color: #10131a; font-weight: 600; }
+button.primary:hover:not(:disabled) { background: #7dd8f5; color: #10131a; }
+.btn-small { padding: 6px 12px; font-size: 0.85rem; }
+
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* --- Kopfzeile im Spiel --- */
+
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.code-badge {
+  font-family: ui-monospace, monospace;
+  font-size: 1.2rem;
+  letter-spacing: 0.2em;
+  background: var(--field);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+.round-badge { color: var(--muted); font-size: 0.9rem; }
+
+/* --- Spielerliste --- */
+
+.scoreboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.player-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--field);
+  border: 2px solid transparent;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.95rem;
+}
+.player-chip.is-clue-giver { border-color: var(--active); }
+.player-chip.is-next { border-color: var(--muted); }
+.player-chip.is-you { font-weight: 600; }
+.player-chip.offline { opacity: 0.45; }
+.player-chip .score { font-weight: bold; font-size: 1.1rem; }
+.player-chip .role {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+.player-chip .tick { color: var(--ok); }
+
+/* --- Spielfeld --- */
+
+.grid-wrapper {
+  display: grid;
+  grid-template-columns: minmax(64px, 120px) auto minmax(64px, 120px);
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  justify-content: center;
+  background: var(--card);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.label {
+  font-weight: bold;
+  text-align: center;
+  font-size: clamp(0.8rem, 1.6vmin, 1.15rem);
+  overflow-wrap: anywhere;
+}
+.label-top { grid-column: 2; grid-row: 1; }
+.label-bottom { grid-column: 2; grid-row: 3; }
+.label-left { grid-column: 1; grid-row: 2; }
+.label-right { grid-column: 3; grid-row: 2; }
+
+#grid {
+  grid-column: 2;
+  grid-row: 2;
+  width: var(--grid-size);
+  height: var(--grid-size);
+  background: var(--field);
+  border: 2px solid var(--text);
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: default;
+}
+#grid.clickable { cursor: crosshair; }
+
+#ring-layer, #marker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#ring-layer { z-index: 1; }
+#marker-layer { z-index: 2; }
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px dashed;
+  box-sizing: border-box;
+  animation: ring-in 0.35s ease-out;
+}
+@keyframes ring-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+.marker.target {
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: 0 0 10px var(--accent);
+  z-index: 4;
+}
+.marker.own {
+  background: var(--guess);
+  border: 2px solid #000;
+  z-index: 3;
+}
+.marker.own.pending {
+  border-style: dashed;
+  opacity: 0.75;
+}
+.marker.other {
+  background: var(--active);
+  border: 2px solid #10131a;
+  z-index: 3;
+}
+.marker .tag {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  background: rgba(16, 19, 26, 0.85);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring { animation: none; }
+}
+
+/* --- Status und Hinweis --- */
+
+.status-panel {
+  background: var(--card);
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+.role-line {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 6px;
+}
+#error-line {
+  color: var(--accent);
+  font-size: 0.9rem;
+  margin-top: 6px;
+  min-height: 1.2em;
+}
+
+.hint-display {
+  text-align: center;
+  font-size: 1.2rem;
+  padding: 12px;
+  background: var(--field);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.hint-display .caption {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+/* --- Legende der Punktebaender --- */
+
+.bands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.band { display: flex; align-items: center; gap: 5px; }
+.band .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+}
+
+/* --- Ergebnisse und Verlauf --- */
+
+.results { display: flex; flex-direction: column; gap: 6px; }
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #444;
+  font-size: 0.95rem;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row .points { font-weight: bold; }
+.result-row .distance { color: var(--muted); font-size: 0.85rem; }
+
+details.panel summary {
+  cursor: pointer;
+  font-weight: bold;
+  list-style: none;
+}
+details.panel summary::-webkit-details-marker { display: none; }
+details.panel summary::before { content: '▸ '; }
+details.panel[open] summary::before { content: '▾ '; }
+
+.table-scroll { overflow-x: auto; margin-top: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th, td { border-bottom: 1px solid #444; padding: 6px; text-align: left; vertical-align: top; }
+td .scales { font-size: 0.75rem; color: var(--muted); }
+
+footer {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 10px;
+}

@@ -1,0 +1,146 @@
+# Teil 1 von 2: das Frontend.
+#
+# Hier sind zwei Replicas sinnvoll und nicht nur Dekoration: nginx liefert
+# statische Dateien aus und haelt keinen Zustand. Jeder Pod kann jede Anfrage
+# beantworten, und eine rollierende Aktualisierung laeuft ohne Unterbrechung.
+# Genau der Unterschied zum Game-Server, der aus gutem Grund einzeln laeuft.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: longwave-web
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-web
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: longwave
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: longwave-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: longwave-web
+        app.kubernetes.io/component: frontend
+        app.kubernetes.io/part-of: longwave
+    spec:
+      terminationGracePeriodSeconds: 15
+
+      securityContext:
+        runAsNonRoot: true
+        # UID des nginx-Benutzers im offiziellen nginx:alpine-Image.
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Auf mehreren Knoten die Replicas verteilen. In kind gibt es nur einen
+      # Knoten, deshalb "ScheduleAnyway" — sonst blieben die Pods Pending.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: longwave-web
+
+      containers:
+        - name: web
+          image: longwave-web:dev
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 2
+
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+
+          # nginx braucht trotz read-only Wurzel-Dateisystem beschreibbare Pfade
+          # fuer PID-Datei und Puffer. Beide liegen im RAM und sind fluechtig —
+          # es wird also nichts Dauerhaftes ins Dateisystem geschrieben
+          # (12 Factor VI).
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        - name: nginx-cache
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: longwave-web
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-web
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: longwave
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: longwave-web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+
+---
+# Haelt bei Knoten-Wartung mindestens einen Frontend-Pod am Leben.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: longwave-web
+  namespace: longwave
+  labels:
+    app.kubernetes.io/name: longwave-web
+    app.kubernetes.io/part-of: longwave
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: longwave-web

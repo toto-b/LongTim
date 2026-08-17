@@ -1,0 +1,92 @@
+# Werte fuer das Helm-Chart kube-prometheus-stack.
+#
+# Das Chart bringt Prometheus, den Prometheus Operator, Grafana und Alertmanager
+# mit. Fuer einen lokalen kind-Cluster ist der Standardumfang zu gross, deshalb
+# wird hier abgespeckt und nur das behalten, was das Projekt zeigt:
+# Prometheus scrapt den Game-Server, Grafana stellt die Spielmetriken dar.
+
+fullnameOverride: kps
+
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    # Standardmaessig beachtet der Operator nur ServiceMonitors, die das Label
+    # seines Helm-Releases tragen. Das abzuschalten macht das Projekt
+    # nachvollziehbarer: der ServiceMonitor in k8s/50-servicemonitor.yaml wird
+    # gefunden, ohne dass man den Release-Namen kennen muss.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+    # Kurze Aufbewahrung, kein PersistentVolume: der Cluster ist zum Vorfuehren
+    # da, nicht zum Archivieren. Nach `kind delete cluster` ist alles weg.
+    retention: 6h
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        memory: 1Gi
+
+    # Scrape-Intervall passend zum ServiceMonitor: bei einem Spiel mit wenigen
+    # Zuegen pro Minute waeren 30s zu grob, um Runden im Diagramm zu erkennen.
+    scrapeInterval: 15s
+    evaluationInterval: 30s
+
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+grafana:
+  enabled: true
+  # Nur zum Vorfuehren. Fuer alles Ernsthafte gehoert das in ein Secret.
+  adminPassword: longwave
+
+  defaultDashboardsTimezone: browser
+
+  # Laedt Dashboards aus ConfigMaps mit dem Label grafana_dashboard=1. Der
+  # Sidecar sorgt dafuer, dass das Longwave-Dashboard automatisch erscheint,
+  # ohne es in der UI zu importieren.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Weggelassen
+# ---------------------------------------------------------------------------
+
+# Ohne Empfaenger fuer Alarme bringt der Alertmanager nichts und kostet nur
+# Speicher. Prometheus-Alarmregeln werden trotzdem ausgewertet.
+alertmanager:
+  enabled: false
+
+# In kind laufen Scheduler, Controller-Manager, etcd und Proxy nicht als
+# abfragbare Endpunkte an den erwarteten Adressen. Die Standard-Targets wuerden
+# dauerhaft rot bleiben und den Blick auf das eigentliche Target verstellen.
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# node-exporter und kube-state-metrics bleiben an: sie liefern den Rahmen
+# (CPU, Speicher, Pod-Neustarts), in dem die Spielmetriken zu lesen sind.
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
